@@ -1,7 +1,7 @@
-// Package EnvWrapper provides simplified access to environment variables and docker secrets.
+// Package env_wrapper provides simplified access to environment variables and docker secrets.
 // If a secret is present the environment variable will be ignored.
 // Every secret needs an "ENV_" prefix.
-package EnvWrapper
+package env_wrapper
 
 import (
 	"os"
@@ -11,33 +11,36 @@ import (
 	secrets "github.com/ijustfool/docker-secrets"
 )
 
-type EnvWrapper struct {
+type env_wrapper struct {
 	secretsEnabled bool
 	secretsReader  *secrets.DockerSecrets
 }
 
 // Creates a new EnvWrapper with the default secret directory.
-func Default() *EnvWrapper {
+func Default() *env_wrapper {
 	return New("")
 }
 
 // Creates a new EnvWrapper with a custom secret directory.
-func New(secretsDir string) *EnvWrapper {
+func New(secretsDir string) *env_wrapper {
 	dockerSecrets, err := secrets.NewDockerSecrets(secretsDir)
-	res := &EnvWrapper{
+	res := &env_wrapper{
 		(err != nil),
 		dockerSecrets,
+	}
+	if _, err := os.Stat(secretsDir); os.IsNotExist(err) {
+		res.secretsEnabled = false
 	}
 	return res
 }
 
 // Gets a string value or returns an empty string if the variable doesn't exist.
-func (w *EnvWrapper) GetString(name string) string {
+func (w *env_wrapper) GetString(name string) string {
 	return w.GetStringDef(name, "")
 }
 
 // Gets a string value or returns a default value if the string is empty.
-func (w *EnvWrapper) GetStringDef(name, defval string) string {
+func (w *env_wrapper) GetStringDef(name, defval string) string {
 	res := defval
 	hasval := false
 	upname := strings.ToUpper(name)
@@ -60,12 +63,12 @@ func (w *EnvWrapper) GetStringDef(name, defval string) string {
 }
 
 // Gets a boolean value or returns false if the variable doesn't exist.
-func (w *EnvWrapper) GetBool(name string) bool {
+func (w *env_wrapper) GetBool(name string) bool {
 	return w.GetBoolDef(name, false)
 }
 
 // Gets a boolean value or returns a default value if variable doesn't exist.
-func (w *EnvWrapper) GetBoolDef(name string, defval bool) bool {
+func (w *env_wrapper) GetBoolDef(name string, defval bool) bool {
 	strval := w.GetString(name)
 	if len(strval) > 0 {
 		res, err := strconv.ParseBool(strval)
@@ -77,12 +80,12 @@ func (w *EnvWrapper) GetBoolDef(name string, defval bool) bool {
 }
 
 // Gets a integer value or returns 0 if the variable doesn't exist.
-func (w *EnvWrapper) GetInt(name string) int {
+func (w *env_wrapper) GetInt(name string) int {
 	return w.GetIntDef(name, 0)
 }
 
 // Gets a integer value or returns a default value if variable doesn't exist.
-func (w *EnvWrapper) GetIntDef(name string, defval int) int {
+func (w *env_wrapper) GetIntDef(name string, defval int) int {
 	strval := w.GetString(name)
 	if len(strval) > 0 {
 		res, err := strconv.Atoi(strval)
@@ -94,12 +97,12 @@ func (w *EnvWrapper) GetIntDef(name string, defval int) int {
 }
 
 // Gets a string array by splitting the value with the whitespace character.
-func (w *EnvWrapper) GetStringArray(name string) []string {
+func (w *env_wrapper) GetStringArray(name string) []string {
 	return w.GetStringArraySep(name, " ")
 }
 
 // Gets a string array by splitting the value with a seperator.
-func (w *EnvWrapper) GetStringArraySep(name, seperator string) []string {
+func (w *env_wrapper) GetStringArraySep(name, seperator string) []string {
 	res := []string{}
 	strval := w.GetString(name)
 	if len(strval) > 0 {
