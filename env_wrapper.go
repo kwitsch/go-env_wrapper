@@ -4,7 +4,6 @@
 package env_wrapper
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 	"strconv"
@@ -25,15 +24,14 @@ func New(secretsDir string) *env_wrapper {
 	res := &env_wrapper{
 		make(map[string]string),
 	}
-	path := strings.TrimRight(strings.TrimSpace(secretsDir), "\\")
-	fmt.Println(path)
+	path := strings.TrimRight(strings.TrimSpace(secretsDir), "\\//")
 	if _, ferr := os.Stat(path); !os.IsNotExist(ferr) {
 
 		files, ferr := ioutil.ReadDir(path)
 		if ferr == nil {
 			for _, file := range files {
 				if strings.HasPrefix(file.Name(), "ENV_") && !file.IsDir() && file.Size() > 0 {
-					bval, eerr := ioutil.ReadFile(path + "\\" + file.Name())
+					bval, eerr := ioutil.ReadFile(path + "/" + file.Name())
 					if eerr == nil {
 						sval := strings.TrimSpace(string(bval))
 						keyname := strings.TrimPrefix(strings.ToUpper(file.Name()), "ENV_")
