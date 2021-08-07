@@ -4,32 +4,44 @@
 package env_wrapper
 
 import (
+	"fmt"
+	"io/ioutil"
 	"os"
 	"strconv"
 	"strings"
-
-	secrets "github.com/ijustfool/docker-secrets"
 )
 
 type env_wrapper struct {
-	secretsEnabled bool
-	secretsReader  *secrets.DockerSecrets
+	envSecrets map[string]string
 }
 
 // Creates a new EnvWrapper with the default secret directory.
 func Default() *env_wrapper {
-	return New("")
+	return New("/run/secrets")
 }
 
 // Creates a new EnvWrapper with a custom secret directory.
 func New(secretsDir string) *env_wrapper {
-	dockerSecrets, err := secrets.NewDockerSecrets(secretsDir)
 	res := &env_wrapper{
-		(err != nil),
-		dockerSecrets,
+		make(map[string]string),
 	}
-	if _, err := os.Stat(secretsDir); os.IsNotExist(err) {
-		res.secretsEnabled = false
+	path := strings.TrimRight(strings.TrimSpace(secretsDir), "\\")
+	fmt.Println(path)
+	if _, ferr := os.Stat(path); !os.IsNotExist(ferr) {
+
+		files, ferr := ioutil.ReadDir(path)
+		if ferr == nil {
+			for _, file := range files {
+				if strings.HasPrefix(file.Name(), "ENV_") && !file.IsDir() && file.Size() > 0 {
+					bval, eerr := ioutil.ReadFile(path + "\\" + file.Name())
+					if eerr == nil {
+						sval := strings.TrimSpace(string(bval))
+						keyname := strings.TrimPrefix(strings.ToUpper(file.Name()), "ENV_")
+						res.envSecrets[keyname] = sval
+					}
+				}
+			}
+		}
 	}
 	return res
 }
@@ -42,17 +54,11 @@ func (w *env_wrapper) GetString(name string) string {
 // Gets a string value or returns a default value if the string is empty.
 func (w *env_wrapper) GetStringDef(name, defval string) string {
 	res := defval
-	hasval := false
 	upname := strings.ToUpper(name)
-	secname := "ENV_" + upname
-	if w.secretsEnabled {
-		secret, err := w.secretsReader.Get(secname)
-		if err != nil {
-			res = strings.TrimSpace(secret)
-			hasval = true
-		}
-	}
-	if !hasval {
+	senvval := w.envSecrets[upname]
+	if len(senvval) > 0 {
+		res = senvval
+	} else {
 		envval := strings.TrimSpace(os.Getenv(upname))
 		if len(envval) > 0 {
 			res = envval
